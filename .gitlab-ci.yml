@@ -24,7 +24,7 @@ build:
     - manage
   script:
     - |
-      apt update git >/dev/null 2>&1 && apt install -y git >/dev/null 2>&1
+      apt update git && apt install -y git >/dev/null 2>&1
       GO_MOD_PROJECT=$(git remote -v|awk 'NR==1{print $2}'|awk -F '//' '{print $2}'|sed "s#\.git##g"|awk -F '@' '{print $2}')
       cd /go/src/${GO_MOD_PROJECT}/
       bash -x scripts/build.sh

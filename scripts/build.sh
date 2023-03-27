@@ -1,8 +1,8 @@
 #!/bin/bash
 
 
-ARCH=$(uname -m)
-OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$1
+OS=$2
 GO_PROJECT=$(git remote -v|awk 'NR==1{print $2}'|awk -F '//' '{print $2}'|sed "s#\.git##g"|awk -F '@' '{print $2}')
 
 go mod init ${GO_PROJECT}

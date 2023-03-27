@@ -62,11 +62,11 @@ upload:
          echo "Pushing $plugin to repo $REPO_URL..."
          curl -u "${AUTH}" "${REPO_URL}" --upload-file "$plugin" -v
 
-         if $(echo $?) -ne 0; then
+         if [ $(echo $?) -ne 0];then
            echo "Failed to upload $plugin to repo $REPO_URL"
            exit 1
          fi
-         
+
          echo "Done"
       done
   when: manual

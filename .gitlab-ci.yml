@@ -16,6 +16,7 @@ variables:
 
 stages:
  - build
+ - upload
 
 before_script:
   - |
@@ -41,7 +42,7 @@ build:
     policy: push
 
 upload:
-  stage: build
+  stage: upload
   image: harbor.treesir.pub:2443/library/base-image:golang-1.20.2
   tags:
     - manage
@@ -60,6 +61,12 @@ upload:
       for plugin in `ls ./bin/*`;do
          echo "Pushing $plugin to repo $REPO_URL..."
          curl -u "${AUTH}" "${REPO_URL}" --upload-file "$plugin" -v
+
+         if $(echo $?) -ne 0; then
+           echo "Failed to upload $plugin to repo $REPO_URL"
+           exit 1
+         fi
+         
          echo "Done"
       done
   when: manual

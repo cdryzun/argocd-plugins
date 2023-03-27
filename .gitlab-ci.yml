@@ -5,7 +5,7 @@ include:
     file: 'jobs-templates/include-all.stable.gitlab-ci.yml'
 
 default:
-  image: ${TOOLBOX_IMAGE}
+  image: harbor.treesir.pub:2443/library/base-image:ci-buildbox
 
 stages:
  - build

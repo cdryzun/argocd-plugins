@@ -25,9 +25,9 @@ build:
     - manage
   script:
     - |
-      apt insatll -y git
+      apt update && apt insatll -y git
       'eval "$GO_MOD_PROJECT"' 
-      
+
       echo $(git remote -v|awk 'NR==1{print $2}'|awk -F '//' '{print $2}'|sed "s#\.git##g"|awk -F '@' '{print $2}')
 
 

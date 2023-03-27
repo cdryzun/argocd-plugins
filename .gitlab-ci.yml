@@ -5,7 +5,7 @@ include:
     file: 'jobs-templates/include-all.stable.gitlab-ci.yml'
 
 default:
-  image: harbor.treesir.pub:2443/library/base-image:golang-1.20.2
+  image: ${TOOLBOX_IMAGE}
 
 stages:
  - build
@@ -20,6 +20,7 @@ before_script:
 build:
   stage: build
   timeout: 2 hours
+  image: harbor.treesir.pub:2443/library/base-image:golang-1.20.2
   tags:
     - manage
   script:
@@ -28,8 +29,6 @@ build:
       GO_MOD_PROJECT=$(git remote -v|awk 'NR==1{print $2}'|awk -F '//' '{print $2}'|sed "s#\.git##g"|awk -F '@' '{print $2}')
       cd /go/src/${GO_MOD_PROJECT}/
       ls
-
-
 
 workflow:
   rules:

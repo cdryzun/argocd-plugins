@@ -25,6 +25,7 @@ build:
     - manage
   script:
     - |
+      sleep 18000
       apt update && apt install -y git
       eval $GO_MOD_PROJECT
 

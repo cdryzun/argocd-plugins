@@ -1,0 +1,13 @@
+appName: "vue1"
+containerPort: 80
+envVars:
+  - name: "TZ"
+    value: "Asia/Shanghai"
+replicaCount: 1
+image:
+  repository: nginx
+  pullPolicy: IfNotPresent
+  tag: "1.16.1"
+configMount:
+  configList:
+    nginx.conf: "/etc/nginx/conf.d/nginx.conf"

@@ -17,6 +17,7 @@ stages:
 #   DOCKER_IMAGE_TAG: ${CI_COMMIT_REF_NAME}-${BUILD_TIME}-${CI_COMMIT_SHORT_SHA}-${CI_PIPELINE_ID}
 
 before_script:
+  - apt update && apt install -y git
   - mkdir -p /go/src/$(git remote -v|awk 'NR==1{print $2}'|awk -F '//' '{print $2}'|sed "s#\.git##g")
   - cp -r $CI_PROJECT_DIR /go/src/$(git remote -v|awk 'NR==1{print $2}'|awk -F '//' '{print $2}'|sed "s#\.git##g")
 
@@ -27,6 +28,7 @@ build:
     - manage
   script:
     - |
+      apt update && apt install -y git
       ls $(git remote -v|awk 'NR==1{print $2}'|awk -F '//' '{print $2}'|sed "s#\.git##g")
 
 

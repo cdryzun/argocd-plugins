@@ -1,0 +1,35 @@
+
+include:
+  - project: 'devops/gitlabci-templates'
+    ref: master
+    file: 'jobs-templates/include-all.stable.gitlab-ci.yml'
+
+default:
+  image: harbor.treesir.pub:2443/library/base-image:golang-1.20.2
+
+stages:
+ - build
+
+# variables:
+#   FLEET_DOCKER_NAME: fleet-build
+#   ARCH: amd64
+#   BUILD_TIME: $$(date +"%Y%m%d%H%M")
+#   DOCKER_IMAGE_TAG: ${CI_COMMIT_REF_NAME}-${BUILD_TIME}-${CI_COMMIT_SHORT_SHA}-${CI_PIPELINE_ID}
+
+before_script:
+  - mkdir -p /go/src/$(git remote -v|awk 'NR==1{print $2}'|awk -F '//' '{print $2}'|sed "s#\.git##g")
+  - cp -r $CI_PROJECT_DIR /go/src/$(git remote -v|awk 'NR==1{print $2}'|awk -F '//' '{print $2}'|sed "s#\.git##g")
+
+build:
+  stage: build
+  timeout: 2 hours
+  tags:
+    - manage
+  script:
+    - |
+      ls $(git remote -v|awk 'NR==1{print $2}'|awk -F '//' '{print $2}'|sed "s#\.git##g")
+
+
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

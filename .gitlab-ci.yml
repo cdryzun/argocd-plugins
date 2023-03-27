@@ -6,10 +6,13 @@ include:
 
 default:
   image: ${TOOLBOX_IMAGE}
+  timeout: 2 hours
 
 variables:
   ARCH: amd64
   OS_TYPE: linux
+  AUTH: "${NEXUS_USER}:${NEXUS_PASSWORD}"
+  REPO_URL: "https://nexus.iquantex.com/repository/static-file/devops-tools/"
 
 stages:
  - build
@@ -22,7 +25,6 @@ before_script:
 
 build:
   stage: build
-  timeout: 2 hours
   image: harbor.treesir.pub:2443/library/base-image:golang-1.20.2
   tags:
     - manage
@@ -32,10 +34,35 @@ build:
       GO_MOD_PROJECT=$(git remote -v|awk 'NR==1{print $2}'|awk -F '//' '{print $2}'|sed "s#\.git##g"|awk -F '@' '{print $2}')
       cd /go/src/${GO_MOD_PROJECT}/
       scripts/build.sh ${ARCH} ${OS_TYPE} ${CI_PROJECT_DIR}/bin
+  cache:
+    key: plugin
+    paths:
+      - bin/
+    policy: push
+
+upload:
+  stage: build
+  image: harbor.treesir.pub:2443/library/base-image:golang-1.20.2
+  tags:
+    - manage
+  cache:
+    key: plugin
+    paths:
+      - bin/
+    policy: pull
   artifacts:
     paths:
       - bin/
     expire_in: 1 week
+  script:
+    - |
+      # upload artifact
+      for plugin in `ls ./bin/*`;do
+         echo "Pushing $plugin to repo $REPO_URL..."
+         curl -u "${AUTH}" "${REPO_URL}" --upload-file "$plugin" -v
+         echo "Done"
+      done
+  when: manual
 
 workflow:
   rules:

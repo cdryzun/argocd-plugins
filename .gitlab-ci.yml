@@ -13,8 +13,8 @@ variables:
   OS_TYPE: linux
   AUTH: "${NEXUS_USER}:${NEXUS_PASSWORD}"
   REPO_URL: "https://nexus.iquantex.com/repository/static-file/devops-tools/"
-  GO111MODULE: on
-  GOPROXY: https://goproxy.cn
+  GO111MODULE: "on"
+  GOPROXY: "https://goproxy.cn"
   
 stages:
  - build

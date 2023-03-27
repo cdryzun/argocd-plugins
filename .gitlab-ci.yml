@@ -26,7 +26,7 @@ build:
   script:
     - |
       apt update && apt install -y git
-      eval "$GO_MOD_PROJECT"
+      eval $GO_MOD_PROJECT
 
       echo $(git remote -v|awk 'NR==1{print $2}'|awk -F '//' '{print $2}'|sed "s#\.git##g"|awk -F '@' '{print $2}')
 

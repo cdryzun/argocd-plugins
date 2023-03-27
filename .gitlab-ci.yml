@@ -10,16 +10,13 @@ default:
 stages:
  - build
 
-# variables:
-#   FLEET_DOCKER_NAME: fleet-build
-#   ARCH: amd64
-#   BUILD_TIME: $$(date +"%Y%m%d%H%M")
-#   DOCKER_IMAGE_TAG: ${CI_COMMIT_REF_NAME}-${BUILD_TIME}-${CI_COMMIT_SHORT_SHA}-${CI_PIPELINE_ID}
+variables:
+  GO_MOD_PROJECT: $(git remote -v|awk 'NR==1{print $2}'|awk -F '//' '{print $2}'|sed "s#\.git##g"|awk -F '@' '{print $2}')
 
 before_script:
-  - apt update && apt install -y git
-  - mkdir -p /go/src/$(git remote -v|awk 'NR==1{print $2}'|awk -F '//' '{print $2}'|sed "s#\.git##g")
-  - cp -r $CI_PROJECT_DIR /go/src/$(git remote -v|awk 'NR==1{print $2}'|awk -F '//' '{print $2}'|sed "s#\.git##g")
+  - echo $GO_MOD_PROJECT
+  # - mkdir -p /go/src/$(git remote -v|awk 'NR==1{print $2}'|awk -F '//' '{print $2}'|sed "s#\.git##g"|awk -F '@' '{print $2}')
+  # - cp -r $CI_PROJECT_DIR /go/src/$(git remote -v|awk 'NR==1{print $2}'|awk -F '//' '{print $2}'|sed "s#\.git##g")
 
 build:
   stage: build
@@ -28,8 +25,8 @@ build:
     - manage
   script:
     - |
-      apt update && apt install -y git
-      ls $(git remote -v|awk 'NR==1{print $2}'|awk -F '//' '{print $2}'|sed "s#\.git##g")
+      echo $GO_MOD_PROJECT
+      echo $(git remote -v|awk 'NR==1{print $2}'|awk -F '//' '{print $2}'|sed "s#\.git##g"|awk -F '@' '{print $2}')
 
 
 workflow:

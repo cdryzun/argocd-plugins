@@ -3,7 +3,7 @@
 
 ARCH=$(uname -m)
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
-GO_PROJECT=$(git remote -v|awk 'NR==1{print $2}'|awk -F '//' '{print $2}'|sed "s#\.git##g")
+GO_PROJECT=$(git remote -v|awk 'NR==1{print $2}'|awk -F '//' '{print $2}'|sed "s#\.git##g"|awk -F '@' '{print $2}')
 
 go mod init ${GO_PROJECT}
 go mod tidy

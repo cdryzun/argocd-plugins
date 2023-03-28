@@ -50,8 +50,7 @@ variables:
   image: ${TOOLBOX_IMAGE}
   tags:
     - manage
-  rules:
-    - when: always
+  when: manual
   cache:
     key: plugin
     paths:
@@ -110,7 +109,6 @@ upload:
          fi
          echo "Done"
       done
-  when: manual
 
 workflow:
   rules:

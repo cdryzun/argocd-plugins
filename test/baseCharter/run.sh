@@ -1,11 +1,12 @@
 #!/bin/bash
 
 WORK_PATH=$(pwd)
-ARCH=$(uname -m)
-OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+PLUGIN=$1
+ARCH=$2
+OS=$3
 
 cd ${WORK_PATH}/$(dirname $0)
 export CHART_HOME='.'
-../../bin/baseCharter-$OS-$ARCH 
+../../bin/$PLUGIN-$OS-$ARCH 
 
 cd ${WORK_PATH}

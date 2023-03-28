@@ -91,7 +91,7 @@ build:
     - set -- $CI_JOB_NAME
     - |
       cd test/$1
-      bash run.sh
+      bash run.sh $1 ${ARCH} ${OS_TYPE} 
 
 baseCharter test: *test_build
 

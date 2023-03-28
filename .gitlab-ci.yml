@@ -18,6 +18,8 @@ variables:
 
 .test:
   stage: test
+  tags:
+    - manage
   retry:
     max: 2
   rules:

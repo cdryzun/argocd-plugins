@@ -24,7 +24,44 @@ variables:
     max: 2
   rules:
     - when: always
-    
+  cache:
+    key: plugin
+    paths:
+      - bin/
+    policy: pull
+
+.build:
+  stage: build
+  image: harbor.treesir.pub:2443/library/base-image:golang-1.20.2
+  tags:
+    - manage
+  retry:
+    max: 2
+  rules:
+    - when: always
+  cache:
+    key: plugin
+    paths:
+      - bin/
+    policy: push
+
+.upload:
+  stage: upload
+  image: ${TOOLBOX_IMAGE}
+  tags:
+    - manage
+  rules:
+    - when: always
+  cache:
+    key: plugin
+    paths:
+      - bin/
+    policy: pull
+  artifacts:
+    paths:
+      - bin/
+    expire_in: 1 week
+
 stages:
  - build
  - test
@@ -37,21 +74,15 @@ before_script:
     cp -r $CI_PROJECT_DIR/ /go/src/${GIT_SERVER}/$CI_PROJECT_ROOT_NAMESPACE/
 
 build:
-  stage: build
-  image: harbor.treesir.pub:2443/library/base-image:golang-1.20.2
-  tags:
-    - manage
+  extends:
+    - .build
   script:
     - |
       apt update >/dev/null 2>&1 && apt install -y git >/dev/null 2>&1
       GO_MOD_PROJECT=$(git remote -v|awk 'NR==1{print $2}'|awk -F '//' '{print $2}'|sed "s#\.git##g"|awk -F '@' '{print $2}')
       cd /go/src/${GO_MOD_PROJECT}/
       scripts/build.sh ${ARCH} ${OS_TYPE} ${CI_PROJECT_DIR}/bin
-  cache:
-    key: plugin
-    paths:
-      - bin/
-    policy: push
+
 
 .test_build: &test_build
   extends: 
@@ -61,28 +92,12 @@ build:
     - |
       cd test/$1
       bash run.sh
-  cache:
-    key: plugin
-    paths:
-      - bin/
-    policy: pull
 
 baseCharter test: *test_build
 
 upload:
-  stage: upload
-  image: harbor.treesir.pub:2443/library/base-image:golang-1.20.2
-  tags:
-    - manage
-  cache:
-    key: plugin
-    paths:
-      - bin/
-    policy: pull
-  artifacts:
-    paths:
-      - bin/
-    expire_in: 1 week
+  extends:
+    - .upload
   script:
     - |
       # upload artifact

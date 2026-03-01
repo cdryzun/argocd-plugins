@@ -135,3 +135,37 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # ------------------------------------------------------------------
+  # argocd-integration: full ArgoCD CMP integration test
+  # Runs on self-hosted runner with k3s + ArgoCD
+  # ------------------------------------------------------------------
+  argocd-integration:
+    name: ArgoCD Integration Test
+    runs-on: [self-hosted, Linux, X64]
+    needs: docker
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Kubernetes and ArgoCD
+        run: |
+          echo "=== Kubernetes Status ==="
+          kubectl get nodes --no-headers
+          echo ""
+          echo "=== ArgoCD Status ==="
+          kubectl get pods -n argocd --no-headers 2>/dev/null || echo "ArgoCD not installed"
+          echo ""
+          echo "=== ArgoCD Version ==="
+          kubectl get deployment argocd-repo-server -n argocd -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || echo "N/A"
+
+      - name: Run ArgoCD Integration Test
+        run: |
+          # Set environment for the test script
+          export KUBECONFIG="${KUBECONFIG:-/etc/rancher/k3s/k3s.yaml}"
+
+          # Run the integration test
+          bash test/argocd-integration/run.sh
+        env:
+          # Pass GitHub token for private repos if needed
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

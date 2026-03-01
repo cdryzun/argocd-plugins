@@ -1,9 +1,8 @@
 repoServer:
   extraContainers:
     - name: basecharter
-      # Replace YOUR_GITHUB_ORG with your GitHub organization or username.
       # Image is automatically published to ghcr.io via GitHub Actions on every push to main.
-      image: ghcr.io/YOUR_GITHUB_ORG/basecharter:latest
+      image: ghcr.io/cdryzun/basecharter:latest
       command: [/var/run/argocd/argocd-cmp-server]
       securityContext:
         runAsNonRoot: true

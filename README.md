@@ -1,6 +1,6 @@
 # argocd-plugins
 
-[![CI](https://github.com/YOUR_GITHUB_ORG/argocd-plugins/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_GITHUB_ORG/argocd-plugins/actions/workflows/ci.yml)
+[![CI](https://github.com/cdryzun/argocd-plugins/actions/workflows/ci.yml/badge.svg)](https://github.com/cdryzun/argocd-plugins/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Go](https://img.shields.io/badge/go-1.26-00ADD8.svg)](https://go.dev/)
 
@@ -64,7 +64,7 @@ helm upgrade argocd argo-cd/argo-cd \
   -f deploy/argocd-cmp-values.yaml
 ```
 
-> Edit `deploy/argocd-cmp-values.yaml` first and replace `YOUR_GITHUB_ORG` with your GitHub organization.
+> Edit `deploy/argocd-cmp-values.yaml` and set your image tag if using a custom registry.
 
 Verify the sidecar is running:
 
@@ -231,7 +231,7 @@ The plugin ships as a Docker image published to [GitHub Container Registry](http
 
 ```bash
 # Pull the latest image
-docker pull ghcr.io/YOUR_GITHUB_ORG/basecharter:latest
+docker pull ghcr.io/cdryzun/basecharter:latest
 
 # Or build locally
 docker build -t basecharter:local .

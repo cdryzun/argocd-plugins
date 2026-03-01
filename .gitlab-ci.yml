@@ -120,7 +120,7 @@ docker:
     DOCKER_TLS_CERTDIR: "/certs"
     # Set REGISTRY and IMAGE_NAME in GitLab CI/CD variables
     # REGISTRY: "ghcr.io"
-    # IMAGE_NAME: "ghcr.io/YOUR_GITHUB_ORG/basecharter"
+    # IMAGE_NAME: "ghcr.io/cdryzun/basecharter"
   tags:
     - manage
   rules:

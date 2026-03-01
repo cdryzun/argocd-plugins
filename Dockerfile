@@ -27,6 +27,8 @@ RUN curl -fsSL "https://github.com/kubernetes-sigs/kustomize/releases/download/k
     | tar -xz -C /usr/local/bin kustomize
 
 COPY --from=builder /usr/local/bin/baseCharter /usr/local/bin/baseCharter
+
+# Copy plugin manifest - ArgoCD expects it in /home/argocd/cmp-server/plugin.yaml
 COPY plugin.yaml /home/argocd/cmp-server/plugin.yaml
 
 # Bundle the base chart so the plugin works without external chart sources

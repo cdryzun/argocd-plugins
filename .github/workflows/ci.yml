@@ -5,6 +5,7 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+  workflow_dispatch:  # Allow manual trigger
 
 env:
   REGISTRY: ghcr.io
@@ -12,7 +13,7 @@ env:
 
 jobs:
   # ------------------------------------------------------------------
-  # verify: go vet + build + yaml lint + functional test
+  # verify: go vet + build + yaml lint + functional test (GitHub-hosted)
   # ------------------------------------------------------------------
   verify:
     name: Verify
@@ -41,8 +42,55 @@ jobs:
       - name: Install pyyaml
         run: pip install pyyaml
 
-      - name: Run verify
+      - name: Run verify (skip docker)
         run: SKIP_DOCKER=1 bash scripts/verify.sh
+
+  # ------------------------------------------------------------------
+  # test-self-hosted: full verification on self-hosted runner
+  # Includes docker build test (local runner has docker)
+  # ------------------------------------------------------------------
+  test-self-hosted:
+    name: Test (Self-Hosted)
+    runs-on: [self-hosted, Linux, X64]
+    needs: verify
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check environment
+        run: |
+          echo "Runner: $(hostname)"
+          echo "OS: $(cat /etc/os-release | grep PRETTY_NAME)"
+          echo "Go: $(go version)"
+          echo "Helm: $(helm version --short 2>/dev/null || echo 'not found')"
+          echo "Kustomize: $(kustomize version 2>/dev/null || echo 'not found')"
+          echo "Docker: $(docker --version 2>/dev/null || echo 'not found')"
+          echo "Python: $(python3 --version)"
+
+      - name: Install missing tools
+        run: |
+          # Install helm if missing
+          if ! command -v helm &>/dev/null; then
+            curl -fsSL -o /tmp/helm.tar.gz \
+              https://get.helm.sh/helm-v3.17.3-linux-amd64.tar.gz
+            sudo tar -xz -C /usr/local/bin --strip-components=1 \
+              linux-amd64/helm < /tmp/helm.tar.gz
+          fi
+
+          # Install kustomize if missing
+          if ! command -v kustomize &>/dev/null; then
+            curl -fsSL -o /tmp/kz.tar.gz \
+              "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.8.1/kustomize_v5.8.1_linux_amd64.tar.gz"
+            sudo tar -xz -C /usr/local/bin kustomize < /tmp/kz.tar.gz
+          fi
+
+          # Install pyyaml if missing
+          if ! python3 -c "import yaml" 2>/dev/null; then
+            pip install pyyaml --user || pip3 install pyyaml --user
+          fi
+
+      - name: Run full verification (including docker build)
+        run: bash scripts/verify.sh
 
   # ------------------------------------------------------------------
   # docker: build + push to ghcr.io (push to main only)
@@ -50,7 +98,7 @@ jobs:
   docker:
     name: Docker Build & Push
     runs-on: ubuntu-latest
-    needs: verify
+    needs: test-self-hosted
     if: github.event_name == 'push'
     permissions:
       contents: read

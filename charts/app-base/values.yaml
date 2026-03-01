@@ -1,0 +1,296 @@
+nameOverride: ""
+
+# -----------------基础配置-----------------------------------------
+# 应用名称.
+appName: ""
+
+# 应用所属工程组名字或者项目组名称.
+appGroups: ""
+
+
+# 应用容器提供服务的端口.
+containerPort: 80
+
+# 环境变量配置, 重要！！！  键值对需要全部用双引号括起来, 否则会导致部署失败.
+envVars:
+  - name: "TZ"
+    value: "Asia/Shanghai"
+  # - name: "SPRING_OUTPUT_ANSI_ENABLED"
+  #   value: "NEVER"
+  # - name: "SPRING_MAIN_BANNER_MODE"
+  #   value: "off"
+  # - name: "LOGGING_PATTERN_CONSOLE"
+  #   value: "[%d] [%5level] [%thread] [%-40logger{39}]:  %msg%n"
+
+# Inject environment variables from a Kubernetes Secret.
+# secretVarsSecretName: the Secret name to read keys from (default: "app-secrets").
+# secretVars maps env var name → key inside that Secret.
+secretVarsSecretName: "app-secrets"
+secretVars: {}
+  # DB_PASSWORD: "db-password-key"
+  # API_KEY: "third-party-api-key"
+
+# 启动容器副本数，默认是1，如果支持多实例部署，可以更改此数值.
+replicaCount: 1
+
+# 应用的镜像信息，注意：这里是实际的应用镜像名字，不是dockerfile中的基础镜像.
+image:
+  repository: nginx
+  # 镜像拉取策略有3种: Always, Never, IfNotPresent , IfNotPresent 为当镜像存在于k8s节点时不拉取， Always 为一直拉取，不管本地是否存在,始终重新拉.
+  pullPolicy: IfNotPresent
+  # 镜像tag号,在正式环境中，一定要提供具体的镜像版本号例如:1.0.0，否则k8s无法识别你的镜像是否有更新.
+  tag: "latest"
+
+# 负载均衡路由配置, 如需配置，开启enabled参数为true, host 为域名，paths 为路由uri.
+# 例如: 通过 myapp.example.com/api 访问，则host为 myapp.example.com, paths为 /api
+# 通常应用程序在开发的时候需要更改路由uri, 例如java应用中需要更改context_path为实际的应用uri, 默认是/,一般改为/APP_NAME(这里APP_NAME替换为你自己的应用名字) , 否则在进行路径转发的时候会识别不到应用的根路径地址.
+# 如果部署环境有gateway进行统一代理路由分发url,则应该由gateway进行代理，不需要开启
+ingress:
+  enabled: false
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+  hosts:
+    - host: app-base.example.com
+      paths:
+        - /app-base
+
+# 资源限定，limits表示容器最高只能使用的资源，不能超过这个值, requests表示容器在启动前要求至少多少资源才能启动，如果一个节点可用资源低于此值，容器将无法被调度启动.
+# 推荐设置: 请求资源尽量控制在满足应用的基本请求即可，单个应用最大使用内存不应该超过4G内存. 1个CPU=1000m, 因此除非是CPU密集计算型应用，否则不应该超过1个CPU, 通常应用最大为500m~800m即可.
+resources:
+  limits:
+    cpu: 500m
+    memory: 1024Mi
+  requests:
+    cpu: 50m
+    memory: 128Mi
+
+# 节点选择器,根据当前的环境配置来选择调度到对应的k8s节点主机, 目前支持如下环境: dev, sit, demo
+nodeSelector: {}
+  #env: dev
+
+# 提交注解信息，默认留空，支持通过CI指定参数.
+podAnnotations: {}
+  # commitUser: ""
+  # commitTime: ""
+  # commitHash: ""
+
+# 额外的 pod lable
+podLabels: {}
+
+# 额外的 sa 账号 注解
+serviceAnnotations: {}
+
+# 额外的 service lable
+serviceLabels: {}
+
+# 额外的 sa 账号 lable
+serviceAccountLabels: {}
+
+# 额外的 PVC lable
+persistentVolumeLabels: {}
+
+# 其他附加标签,格式是key-value形式.
+logExtraLable: {}
+  # 开启日志集中采集，前置要求是应用程序的日志输出到控制台的标准的stdout,stderr, 严禁将日志写入到本地文件中.
+  # 此logtype 标签是用于进行日志采集的分类标示，各个编程语言输出的日志格式不同, 通常按照开发语言分类,支持的参数有: java, python
+  # logtype: "java"
+  # logtype: "python"
+  # 前端工程一般部署于nginx中,分类使用nginx
+  # logtype: "nginx"
+
+# 应用配置文件, 支持在容器启动时挂载指定的配置文件到容器中.
+configMount:
+  # 将配置文件放入到 devops/你的工程/config目录下,如果不存在该目录请新建config目录，在添加需要加载的配置文件，只支持挂载文件到一个路径下。
+  # 在以下例子中表示将config目录下的2个配置文件都挂载到 /etc/nginx/conf.d 下面。
+  # 注意：虽然支持多文件挂载，但是仅挂载需要的文件，不需要的文件不要添加到下面的列表中，例如有多份配置文件prod.conf, dev.conf,则可以都放置到config文件夹中，但在下面配置中根据不同环境，使用不同的配置文件.
+  configList: {}
+    # example-configmap-1: "/etc/nginx/conf.d/nginx.conf"
+    # example-configmap-2: "/etc/nginx/conf.d1/nginx1.conf"
+
+
+# 数据持久化配置 注意:(严禁开启持久化配置用于保存日志，容器日志一律通过打印输出到标准输出和标准错误，即stdout,stderr)
+persistence:
+  # 是否开启数据持久化
+  enabled: false
+  ## 删除部署以后不删除数据卷，如果不需要保留，则注释以下配置.
+  annotations:
+    "helm.sh/resource-policy": keep
+  # 持久化存储类名字,默认自动识别集群上可用存储，如果无法创建持久化存储，则需要明确指定使用的存储类名字,可以在k8s集群上查看当前已配置的持久存储类型,
+  storageClassName: "-"
+  # 持久化存储的读写模式，单点读写：ReadWriteOnce，多点只读：ReadOnlyMany，多点读写：ReadWriteMany
+  accessMode: ReadWriteMany
+  # 存储卷空间大小
+  size: 10Gi
+  # 挂载到容器内的路径，意思为将存储空间挂载到此路径下，容器运行时写入此目录的数据将被保存到集群配置的存储上。
+  mountPath: "/opt/deployments/data"
+
+# 挂载已经存在的 PVC, 必要字段为: pvcName、mountPath、readOnly
+mountExtraPersistenceVolume: {}
+  # price-service:
+  #   pvcName: "turing-service"
+  #   mountPath: "/home/app/turing-service"
+  #   readOnly: true
+  # common:
+  #   pvcName: "shared-common"
+  #   mountPath: "/home/shared/common"
+  #   readOnly: true
+
+
+# 容器健康探针配置, k8s提供3种探测容器状态的方式，这里只使用常用的2种方式，即TCP方式和HTTP方式, 默认内置开启TCP方式，即检测容器端口是否可以连接,当开启http方式时替换为http方式.
+# 探针类型说明:
+# 就绪探针: 当容器启动时，如何让k8s知道容器已经启动完成，可以提供服务，才会把状态标志为健康可用.
+# 存活探针: 当容器运行时，如何让k8s知道服务是否运行正常，如果k8s不知道，那么即使服务挂掉，但是容器实际还在运行，k8s也不会去重启容器，不会进行自我修复操作。
+containerProbe:
+  enabled: false
+  # HTTP方式探针，k8s会请求容器内的服务给定的url接口, 任何大于或等于 200 并且小于 400 的返回代码表示成功，其它返回代码都表示失败。
+  httpMethod:
+    # 就绪探针
+    readinessProbe:
+      httpGet:
+        # 容器内服务实现的健康探测接口
+        path: /healthz
+        # 连接端口，这里使用默认的端口名称，一般无需更改
+        port: http
+      # 在执行第一次探测前应该等待的时间,单位是秒
+      initialDelaySeconds: 10
+      # 每隔几秒执行一次就绪探测
+      periodSeconds: 10
+    # 存活探针
+    livenessProbe:
+      httpGet:
+        # 容器内服务实现的健康探测接口
+        path: /healthz
+        # 连接端口，这里使用默认的端口名称，一般无需更改
+        port: http
+      # 在执行第一次探测前应该等待的时间,单位是秒
+      initialDelaySeconds: 15
+      # 每隔几秒执行一次存活探测
+      periodSeconds: 20
+
+
+
+# -----------------高级配置，通常不需要更改-----------------------------------------
+
+# pod升级方式,可选值为: Recreate 或者 RollingUpdate 默认为滚动升级模式 RollingUpdate
+strategy: RollingUpdate
+
+# 服务发现配置，一般无需配置，默认即可. (如有特殊需求看下面注释.)
+service:
+  # k8s 运行的容器使用的是集群内的私有IP地址，会随机变化的，无法直接使用IP访问。除非有特殊需求，需要从集群外以IP+端口方式单独访问该应用进行调试.
+  # 可选类型有: ClusterIP , NodePort 两种, 使用NodePort方式的话，会让k8s在所有集群节点上打开一个指定的端口，通过任意一个集群节点的IP加上指定的端口就可以访问到应用。
+  # NodePort 方式一般仅用于开发环境调试，生产环境不推荐使用.
+  type: ClusterIP
+  # 服务发现端口，不能更改，在集群内部可以通过http://应用部署名字 直接访问，例如部署的服务是 my-service, 则其他服务调用该服务时可以用服务发现的名字http://my-service 访问.
+  port: 80
+  # 如果使用NodePort方式，需要指定一个端口，范围在30000-32767之间，注意：此端口是全集群唯一，因此要注意不能使用已经存在的端口，即使是同一个应用需要部署在多个不同命名空间，也需要单独指定不同端口，否则会冲突.
+  # 如非必要，不要长期开启nodeport方式,需要临时调试可以开启, 调试完成后需要关闭.
+  #nodeport: 31100
+  ## 添加额外的 Service 端口，服务存在多个端口 or Sidecar模式 的 POD 可以用到
+  # extraPorts:
+  # - name: metricPort
+  #   port: 8888
+  #   protocol: TCP
+  #   targetPort: 8888
+
+# 拉取时需要的密码配置，当前无需配置.
+imagePullSecrets: []
+
+# RBAC 权限设定，一般无需配置，默认即可.
+## For RBAC support:
+rbac:
+  # 是否开启组建 akka 集群所需 rbac 权限
+  create: true
+  akka_create: true
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+# 当前无需配置.
+podSecurityContext: {}
+  # fsGroup: 2000
+
+# 容器权限相关，当前无需配置. {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+# 自动扩容配置，需要应用支持无状态，多实例部署才可以打开。
+# 以下自动扩容指标基于上面配置的资源限定request值进行计算是否需要扩容，例如：应用设置CPU request为100m时,当CPU平均使用至80%，就是达到80m时会触发扩容
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+# 污点容忍,当前无需配置.
+tolerations: []
+
+# 容器亲和性配置,如果不清楚配置，不要更改下面的配置. 以下配置为软反亲和性，当应用需要部署多实例时，可以确保尽量分散部署在各个节点.
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchExpressions:
+          - key: app
+            operator: In
+            values:
+            - app-base
+        topologyKey: "kubernetes.io/hostname"
+
+# 添加 pod /etc/hosts 主机记录
+hostAliases: []
+  # - ip: "127.0.0.1"
+  #   hostnames:
+  #   - "myapp.local"
+
+# 额外的 Custom yaml manifests 清单, 支持任意被当前 K8S 识别的清单
+extraManifests: []
+# extraManifests:
+#   - apiVersion: monitoring.coreos.com/v1
+#     kind: ServiceMonitor
+#     metadata:
+#       labels:
+#         project-space: "{{- .Release.Namespace -}}"
+#       name: my-app
+#       namespace: "{{ .Release.Namespace }}"
+#     spec:
+#       endpoints:
+#         - path: /metrics
+#           port: http
+#       namespaceSelector:
+#         matchNames:
+#           - "{{ .Release.Namespace }}"
+#       selector:
+#         matchLabels:
+#           app.kubernetes.io/name: my-app
+
+# 添加 init Containers 完成相应动作，如: 程序工作的前置任务、依赖组建同步更新，此配置属于 高级配置，需管理员配合添加
+initContainers: []
+  # - name: init
+  #   image: busybox:1.31.1
+  #   command:
+  #     - sh
+  #     - '-c'
+  #     - ls / && chmod -Rv 600 /tmp/* || true
+
+# sideCars 容器支持，如: 如多个应用之间需要抽象成一体进行管理。此配置属于 高级配置，需管理员配合添加
+sideCars: ""
+  # - name: cloudsql-proxy
+  #   image: gcr.io/cloudsql-docker/gce-proxy:1.17
+  #   command:
+  #     - "/cloud_sql_proxy"
+  #     - "-instances=<instance_end_point>=tcp:3306"
+  #   securityContext:
+  #     runAsNonRoot: true

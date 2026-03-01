@@ -15,25 +15,31 @@ FROM alpine:3.21
 ARG HELM_VERSION=3.17.3
 ARG KUSTOMIZE_VERSION=5.8.1
 
-# 安装运行时依赖
+# Install runtime dependencies
 RUN apk add --no-cache ca-certificates curl tar gzip
 
-# 安装 helm
+# Install helm
 RUN curl -fsSL "https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz" \
     | tar -xz -C /usr/local/bin --strip-components=1 linux-amd64/helm
 
-# 安装 kustomize
+# Install kustomize
 RUN curl -fsSL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" \
     | tar -xz -C /usr/local/bin kustomize
 
 COPY --from=builder /usr/local/bin/baseCharter /usr/local/bin/baseCharter
 COPY plugin.yaml /home/argocd/cmp-server/plugin.yaml
 
-# uid 999 是 ArgoCD 约定的非 root 用户
-# 不指定 gid，避免与 alpine 基础镜像内置组冲突
+# Bundle the base chart so the plugin works without external chart sources
+COPY charts/ /home/argocd/charts/
+
+# uid 999 is the ArgoCD convention for non-root user
+# Do not specify gid to avoid conflicts with alpine built-in groups
 RUN addgroup -S argocd && adduser -S -u 999 -G argocd argocd
 
 USER 999
 
-# argocd-cmp-server 由 ArgoCD repo-server 的 initContainer 挂载到 /var/run/argocd
+# Default chart location bundled in the image
+ENV CHART_HOME=/home/argocd/charts
+
+# argocd-cmp-server is mounted by ArgoCD repo-server initContainer
 ENTRYPOINT ["/var/run/argocd/argocd-cmp-server"]

@@ -1,79 +1,23 @@
 
-include:
-  - project: 'devops/gitlabci-templates'
-    ref: master
-    file: 'jobs-templates/include-all.stable.gitlab-ci.yml'
-
 default:
-  image: ${TOOLBOX_IMAGE}
   timeout: 2 hours
 
 variables:
   ARCH: amd64
   OS_TYPE: linux
-  AUTH: "${NEXUS_USER}:${NEXUS_PASSWORD}"
-  REPO_URL: "https://nexus.iquantex.com/repository/static-file/devops-tools/"
   GO111MODULE: "on"
-  GOPROXY: "https://goproxy.cn"
-
-.test:
-  stage: test
-  tags:
-    - manage
-  retry:
-    max: 2
-  rules:
-    - when: always
-  cache:
-    key: plugin
-    paths:
-      - bin/
-    policy: pull
-
-.build:
-  stage: build
-  image: golang:1.26-alpine
-  tags:
-    - manage
-  retry:
-    max: 2
-  rules:
-    - when: always
-  cache:
-    key: plugin
-    paths:
-      - bin/
-    policy: push
-
-.upload:
-  stage: upload
-  image: ${TOOLBOX_IMAGE}
-  tags:
-    - manage
-  when: manual
-  cache:
-    key: plugin
-    paths:
-      - bin/
-    policy: pull
-  artifacts:
-    paths:
-      - bin/
-    expire_in: 1 week
+  GOPROXY: "https://goproxy.cn,direct"
 
 stages:
- - verify
- - build
- - test
- - upload
- - docker
+  - verify
+  - build
+  - test
+  - upload
+  - docker
 
-before_script:
-  - |
-    GIT_SERVER=$(echo $CI_SERVER_URL|awk -F '//' '{print $2}')
-    mkdir -p /go/src/${GIT_SERVER}/$CI_PROJECT_ROOT_NAMESPACE
-    cp -r $CI_PROJECT_DIR/ /go/src/${GIT_SERVER}/$CI_PROJECT_ROOT_NAMESPACE/
-
+# ------------------------------------------------------------------
+# verify: go vet + yaml lint + functional test (no docker)
+# ------------------------------------------------------------------
 verify:
   stage: verify
   image: golang:1.26-alpine
@@ -81,9 +25,6 @@ verify:
     - manage
   rules:
     - when: always
-  # 覆盖全局 before_script
-  # - docker executor (Alpine): apk 安装工具
-  # - shell executor (宿主机): 工具已预装，跳过安装
   before_script:
     - |
       if command -v apk > /dev/null 2>&1; then
@@ -98,61 +39,92 @@ verify:
   script:
     - SKIP_DOCKER=1 bash scripts/verify.sh
 
+# ------------------------------------------------------------------
+# build: compile binary for linux/amd64
+# ------------------------------------------------------------------
 build:
-  extends:
-    - .build
+  stage: build
+  image: golang:1.26-alpine
+  tags:
+    - manage
+  retry:
+    max: 2
+  rules:
+    - when: always
+  cache:
+    key: plugin
+    paths:
+      - bin/
+    policy: push
   script:
-    - |
-      apt update >/dev/null 2>&1 && apt install -y git >/dev/null 2>&1
-      GO_MOD_PROJECT=$(git remote -v|awk 'NR==1{print $2}'|awk -F '//' '{print $2}'|sed "s#\.git##g"|awk -F '@' '{print $2}')
-      cd /go/src/${GO_MOD_PROJECT}/
-      scripts/build.sh ${ARCH} ${OS_TYPE} ${CI_PROJECT_DIR}/bin
+    - scripts/build.sh ${ARCH} ${OS_TYPE} ${CI_PROJECT_DIR}/bin
 
-
+# ------------------------------------------------------------------
+# test: run integration test against the compiled binary
+# ------------------------------------------------------------------
 .test_build: &test_build
-  extends: 
-    - .test
+  stage: test
+  tags:
+    - manage
+  retry:
+    max: 2
+  rules:
+    - when: always
+  cache:
+    key: plugin
+    paths:
+      - bin/
+    policy: pull
+
+baseCharter test:
+  <<: *test_build
   script:
     - set -- $CI_JOB_NAME
-    - |
-      cd test/$1
-      bash run.sh $1 ${ARCH} ${OS_TYPE} 
+    - cd test/$1
+    - bash run.sh $1 ${ARCH} ${OS_TYPE}
 
-baseCharter test: *test_build
-
+# ------------------------------------------------------------------
+# upload: publish binary artifact (manual trigger)
+# ------------------------------------------------------------------
 upload:
-  extends:
-    - .upload
+  stage: upload
+  tags:
+    - manage
+  when: manual
+  cache:
+    key: plugin
+    paths:
+      - bin/
+    policy: pull
+  artifacts:
+    paths:
+      - bin/
+    expire_in: 1 week
   script:
     - |
-      # upload artifact
-      for plugin in `ls ./bin/*`;do
-         echo "Pushing $plugin to repo $REPO_URL..."
-         curl -u "${AUTH}" "${REPO_URL}" --upload-file "$plugin" -v
-         if [[ $(echo $?) -ne 0 ]];then
-           echo "Failed to upload $plugin to repo $REPO_URL"
-           exit 1 && break
-         fi
-         echo "Done"
+      for plugin in $(ls ./bin/*); do
+        echo "Artifact: $plugin"
+        # Configure REPO_URL and AUTH variables in GitLab CI/CD settings
+        # curl -u "${AUTH}" "${REPO_URL}" --upload-file "$plugin"
       done
 
-.docker:
+# ------------------------------------------------------------------
+# docker: build + push to ghcr.io or custom registry
+# ------------------------------------------------------------------
+docker:
   stage: docker
   image: docker:27
   services:
     - docker:27-dind
   variables:
     DOCKER_TLS_CERTDIR: "/certs"
-    REGISTRY: "zot.treesir.pub:5000"
-    IMAGE_NAME: "${REGISTRY}/devops/argocd-plugins/baseCharter"
+    # Set REGISTRY and IMAGE_NAME in GitLab CI/CD variables
+    # REGISTRY: "ghcr.io"
+    # IMAGE_NAME: "ghcr.io/YOUR_GITHUB_ORG/basecharter"
   tags:
     - manage
   rules:
     - when: always
-
-docker:
-  extends:
-    - .docker
   script:
     - docker build -t "${IMAGE_NAME}:${CI_COMMIT_SHORT_SHA}" .
     - docker tag "${IMAGE_NAME}:${CI_COMMIT_SHORT_SHA}" "${IMAGE_NAME}:latest"

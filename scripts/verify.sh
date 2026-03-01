@@ -97,7 +97,7 @@ else
     cp -r test/baseCharter "${TEST_WORK}"
 
     set +e
-    OUTPUT=$(cd "${TEST_WORK}" && CHART_HOME=. "${BINARY}" 2>&1)
+    OUTPUT=$(cd "${TEST_WORK}" && CHART_HOME="${PROJECT_DIR}/charts" "${BINARY}" 2>&1)
     EXIT_CODE=$?
     set -e
 

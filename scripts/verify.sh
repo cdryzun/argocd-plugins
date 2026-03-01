@@ -1,8 +1,8 @@
 #!/bin/bash
 #
-# 插件系统端到端验证脚本
-# 可在本地或 CI 中直接运行: bash scripts/verify.sh
-# 跳过 docker 构建: SKIP_DOCKER=1 bash scripts/verify.sh
+# End-to-end verification script for the plugin system.
+# Run locally or in CI: bash scripts/verify.sh
+# Skip docker build:    SKIP_DOCKER=1 bash scripts/verify.sh
 #
 
 set -euo pipefail
@@ -55,9 +55,9 @@ else
 fi
 
 # ------------------------------------------------------------------
-# 3. YAML 语法校验
+# 3. YAML syntax
 # ------------------------------------------------------------------
-section "YAML 语法"
+section "YAML syntax"
 for f in plugin.yaml deploy/argocd-cmp-values.yaml; do
     if python3 -c "import yaml; yaml.safe_load(open('$f'))" 2>&1; then
         pass "yaml valid: $f"
@@ -67,9 +67,9 @@ for f in plugin.yaml deploy/argocd-cmp-values.yaml; do
 done
 
 # ------------------------------------------------------------------
-# 4. plugin.yaml 结构校验（CMP v2 规范）
+# 4. plugin.yaml structure (CMP v2 spec)
 # ------------------------------------------------------------------
-section "plugin.yaml 结构"
+section "plugin.yaml structure"
 python3 - <<'PYEOF' && pass "plugin.yaml CMP v2 structure" || fail "plugin.yaml CMP v2 structure"
 import yaml, sys
 doc = yaml.safe_load(open('plugin.yaml'))
@@ -83,9 +83,9 @@ print(f"  name={doc['metadata']['name']} command={doc['spec']['generate']['comma
 PYEOF
 
 # ------------------------------------------------------------------
-# 5. 功能测试（需要 helm + kustomize）
+# 5. Functional test (requires helm + kustomize)
 # ------------------------------------------------------------------
-section "功能测试（二进制 + chart 渲染）"
+section "Functional test (binary + chart rendering)"
 if ! command -v helm &>/dev/null; then
     skip "helm not found, skipping functional test"
 elif ! command -v kustomize &>/dev/null; then
@@ -104,7 +104,7 @@ else
     if [[ ${EXIT_CODE} -ne 0 ]]; then
         fail "binary exited ${EXIT_CODE}: ${OUTPUT}"
     else
-        # 验证输出是合法的 multi-doc YAML，且包含期望资源
+        # Validate output is valid multi-doc YAML containing expected resource kinds
         python3 - <<PYEOF && pass "output: valid YAML with expected resources" || fail "output: missing required resources"
 import yaml, sys
 
@@ -117,7 +117,7 @@ assert 'ServiceAccount' in kinds, f"ServiceAccount missing"
 assert 'ConfigMap'     in kinds, f"ConfigMap missing (config/ processing failed)"
 PYEOF
 
-        # 验证临时文件清理
+        # Verify temporary file cleanup (defer must have run)
         if [[ -f "${TEST_WORK}/kustomization.yaml" ]]; then
             fail "kustomization.yaml leaked (defer did not run)"
         else
@@ -127,7 +127,7 @@ PYEOF
 fi
 
 # ------------------------------------------------------------------
-# 6. Docker build（可选，设置 SKIP_DOCKER=1 跳过）
+# 6. Docker build (optional; set SKIP_DOCKER=1 to skip)
 # ------------------------------------------------------------------
 section "Docker build"
 if [[ "${SKIP_DOCKER:-0}" == "1" ]]; then
@@ -136,7 +136,7 @@ elif ! command -v docker &>/dev/null; then
     skip "docker not found"
 else
     DOCKER_CMD="docker"
-    # CI 环境中 docker 通常可直接使用；本地需要 sudo 时自动降级
+    # In CI docker is usually accessible directly; fall back to sudo for local environments
     if ! docker info &>/dev/null 2>&1; then
         DOCKER_CMD="sudo docker"
     fi
@@ -150,7 +150,7 @@ else
 fi
 
 # ------------------------------------------------------------------
-# 汇总
+# Summary
 # ------------------------------------------------------------------
 echo ""
 echo "================================================"

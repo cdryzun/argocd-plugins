@@ -122,39 +122,70 @@ fi
 pass "Sidecar configured"
 
 # Wait for rollout (handle single-node port conflicts)
-info "Waiting for rollout (may need to delete old pods on single-node)..."
-sleep 10
+# On single-node clusters, new pods may get stuck in Pending/Init
+# because old pods still hold resources. We need to force-delete old pods.
+info "Waiting for rollout on single-node cluster..."
 
-# Check for pending pods
-PENDING=$(kubectl get pods -n "${ARGOCD_NS}" -l app.kubernetes.io/name=argocd-repo-server \
-    --field-selector=status.phase=Pending --no-headers 2>/dev/null | wc -l || echo "0")
+# Get the current replicaset pods (old ones to delete)
+OLD_PODS=$(kubectl get pods -n "${ARGOCD_NS}" -l app.kubernetes.io/name=argocd-repo-server \
+    -o jsonpath='{.items[?(@.metadata.annotations.kubectl\.kubernetes\.io/restartedAt=="")].metadata.name}' 2>/dev/null || echo "")
 
-if [[ "${PENDING}" -gt 0 ]]; then
-    warn "Port conflict detected, deleting old pods..."
-    kubectl delete pods -n "${ARGOCD_NS}" -l app.kubernetes.io/name=argocd-repo-server \
-        --field-selector=status.phase=Running --force --grace-period=0 2>/dev/null || true
-    sleep 15
+# Wait a bit for new pod to be created
+sleep 5
+
+# Check for pods stuck in Pending or Init
+STUCK_PODS=$(kubectl get pods -n "${ARGOCD_NS}" -l app.kubernetes.io/name=argocd-repo-server \
+    --field-selector=status.phase=Pending -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
+
+if [[ -n "${STUCK_PODS}" ]]; then
+    warn "Pods stuck in Pending, force-deleting old pods to free resources..."
+
+    # Delete all pods except the newest one (by creation timestamp)
+    kubectl get pods -n "${ARGOCD_NS}" -l app.kubernetes.io/name=argocd-repo-server \
+        --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[:-1].metadata.name}' \
+        | xargs -r kubectl delete -n "${ARGOCD_NS}" --force --grace-period=0 2>/dev/null || true
+
+    sleep 10
 fi
 
-# Wait for new pod
-info "Waiting for new pod..."
-sleep 20
+# Wait for rollout to complete with timeout
+info "Waiting for deployment rollout..."
+if ! kubectl rollout status deployment/argocd-repo-server -n "${ARGOCD_NS}" --timeout=120s 2>&1; then
+    warn "Rollout status check failed, checking pod status manually..."
+fi
 
-# Get the running pod with basecharter
-REPO_POD=$(kubectl get pods -n "${ARGOCD_NS}" -l app.kubernetes.io/name=argocd-repo-server \
-    --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+# Additional wait for pod to be fully ready
+sleep 10
+
+# Get the running pod with basecharter (retry logic)
+info "Finding ready pod..."
+for i in {1..6}; do
+    REPO_POD=$(kubectl get pods -n "${ARGOCD_NS}" -l app.kubernetes.io/name=argocd-repo-server \
+        --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+
+    if [[ -n "${REPO_POD}" ]]; then
+        break
+    fi
+
+    warn "Attempt $i: No running pod yet, waiting..."
+    sleep 10
+done
 
 if [[ -z "${REPO_POD}" ]]; then
-    fail "Could not find pod with basecharter"
-    kubectl get pods -n "${ARGOCD_NS}" -l app.kubernetes.io/name=argocd-repo-server 2>&1
+    fail "Could not find running pod with basecharter after 60s"
+    kubectl get pods -n "${ARGOCD_NS}" -l app.kubernetes.io/name=argocd-repo-server -o wide 2>&1
+    kubectl describe pods -n "${ARGOCD_NS}" -l app.kubernetes.io/name=argocd-repo-server 2>&1 | tail -50
     exit 1
 fi
 
 info "Found pod: ${REPO_POD}"
 
-# Wait for this specific pod
-kubectl wait --for=condition=Ready pod "${REPO_POD}" -n "${ARGOCD_NS}" --timeout=60s 2>&1 || {
-    kubectl get pod "${REPO_POD}" -n "${ARGOCD_NS}" 2>&1
+# Wait for this specific pod to be ready
+kubectl wait --for=condition=Ready pod "${REPO_POD}" -n "${ARGOCD_NS}" --timeout=90s 2>&1 || {
+    fail "Pod did not become ready"
+    kubectl get pod "${REPO_POD}" -n "${ARGOCD_NS}" -o wide 2>&1
+    kubectl describe pod "${REPO_POD}" -n "${ARGOCD_NS}" 2>&1 | tail -30
+    exit 1
 }
 
 pass "Repo-server pod ready"

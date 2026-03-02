@@ -104,6 +104,9 @@ jobs:
       contents: read
       packages: write
 
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -139,6 +142,7 @@ jobs:
   # ------------------------------------------------------------------
   # argocd-integration: full ArgoCD CMP integration test
   # Runs on self-hosted runner with k3s + ArgoCD
+  # Uses the image built and pushed by the docker job
   # ------------------------------------------------------------------
   argocd-integration:
     name: ArgoCD Integration Test
@@ -147,6 +151,14 @@ jobs:
     if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v4
+
+      - name: Get image tag
+        id: image
+        run: |
+          # The docker job outputs multiple tags (newline-separated), take the first one
+          IMAGE_TAG=$(echo "${{ needs.docker.outputs.image-tag }}" | head -n1)
+          echo "tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          echo "Using image: ${IMAGE_TAG}"
 
       - name: Check Kubernetes and ArgoCD
         run: |
@@ -164,8 +176,9 @@ jobs:
           # Set environment for the test script
           export KUBECONFIG="${KUBECONFIG:-/etc/rancher/k3s/k3s.yaml}"
 
-          # Run the integration test
+          # Run the integration test with the pre-built image
           bash test/argocd-integration/run.sh
         env:
-          # Pass GitHub token for private repos if needed
+          # Pass the image tag from docker job
+          IMAGE_TAG: ${{ steps.image.outputs.tag }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

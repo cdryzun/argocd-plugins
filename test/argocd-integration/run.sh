@@ -186,7 +186,7 @@ pass "Target namespace created"
 
 TEST_REPO="https://github.com/cdryzun/argocd-plugins.git"
 
-info "Creating Application with baseCharter plugin..."
+info "Creating Application with baseCharter-v1.0 plugin..."
 cat <<EOF | kubectl apply -f - 2>&1
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -202,7 +202,7 @@ spec:
     targetRevision: main
     path: examples/nginx-app
     plugin:
-      name: baseCharter
+      name: baseCharter-v1.0
   destination:
     server: https://kubernetes.default.svc
     namespace: ${TEST_TARGET_NS}

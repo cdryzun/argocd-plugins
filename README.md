@@ -1,8 +1,10 @@
 # argocd-plugins
 
 [![CI](https://github.com/cdryzun/argocd-plugins/actions/workflows/ci.yml/badge.svg)](https://github.com/cdryzun/argocd-plugins/actions/workflows/ci.yml)
+[![ArgoCD Integration](https://github.com/cdryzun/argocd-plugins/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/cdryzun/argocd-plugins/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Go](https://img.shields.io/badge/go-1.26-00ADD8.svg)](https://go.dev/)
+[![ArgoCD](https://img.shields.io/badge/ArgoCD-CMP%20v2-9B59B6.svg)](https://argo-cd.readthedocs.io/en/stable/user-guide/config-management-plugins/)
 
 A production-ready **ArgoCD Config Management Plugin (CMP v2)** that enables application teams to deploy to Kubernetes with only a `values.yaml` file — no Helm chart management required.
 
@@ -103,7 +105,7 @@ spec:
     targetRevision: main
     path: .
     plugin:
-      name: basecharter              # explicit plugin selection
+      name: baseCharter-v1.0          # Format: {name}-{version} from plugin.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: nginx-app
@@ -217,7 +219,7 @@ Override per-application via ArgoCD Application spec:
 ```yaml
 source:
   plugin:
-    name: basecharter
+    name: baseCharter-v1.0
     env:
       - name: APP_BASE_NAME
         value: my-custom-chart
@@ -249,7 +251,7 @@ The image bundles:
 
 ### Prerequisites
 
-- Go 1.21+
+- Go 1.26+
 - helm 3.x
 - kustomize 5.x
 - Docker (optional, for `docker build` check)

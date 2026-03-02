@@ -3,13 +3,17 @@
 # ArgoCD CMP Integration Test for baseCharter plugin
 #
 # This script performs TRUE ArgoCD integration testing:
-# 1. Build and push plugin image
+# 1. Use pre-built image from ghcr.io (built by CI docker job)
 # 2. Deploy plugin as sidecar to ArgoCD repo-server
 # 3. Create ArgoCD Application using baseCharter plugin
 # 4. Wait for ArgoCD to sync (plugin generates manifests)
 # 5. Verify Application status is Synced and Healthy
 #
 # This tests the ACTUAL ArgoCD CMP v2 workflow!
+#
+# Usage:
+#   IMAGE_TAG=ghcr.io/cdryzun/basecharter:latest ./run.sh
+#   # Or defaults to ghcr.io/cdryzun/basecharter:latest
 #
 
 set -euo pipefail
@@ -20,6 +24,10 @@ TEST_APP_NAME="basecharter-e2e-$$"
 ARGOCD_NS="argocd"
 TEST_TARGET_NS="basecharter-test-$$"
 TIMEOUT_SECONDS=300
+
+# Default image tag (can be overridden by IMAGE_TAG env var)
+# CI workflow passes the tag from docker job output
+IMAGE_TAG="${IMAGE_TAG:-ghcr.io/cdryzun/basecharter:latest}"
 
 # Colors
 RED='\033[0;31m'
@@ -43,24 +51,21 @@ cleanup() {
 trap cleanup EXIT
 
 # ------------------------------------------------------------------
-# 1. Build and push plugin image
+# 1. Verify image availability
 # ------------------------------------------------------------------
-section "Building plugin image"
-IMAGE_TAG="zot.treesir.pub:5000/devops/argocd-plugins/basecharter:e2e-$$"
+section "Verifying plugin image"
 
-info "Building image: ${IMAGE_TAG}"
-if sudo docker build -t "${IMAGE_TAG}" "${PROJECT_DIR}" 2>&1 | tail -5; then
-    pass "Image built"
+info "Using image: ${IMAGE_TAG}"
+
+# Pull the image to ensure it's available (k3s may need it locally)
+if sudo docker pull "${IMAGE_TAG}" 2>&1 | tail -3; then
+    pass "Image pulled successfully"
 else
-    fail "Build failed"
+    fail "Failed to pull image: ${IMAGE_TAG}"
     exit 1
 fi
 
-info "Pushing to Zot registry"
-sudo docker push "${IMAGE_TAG}" 2>&1 | tail -3
-pass "Image pushed"
-
-# Import to k3s
+# Import to k3s containerd (optional, for k3s clusters)
 sudo docker save "${IMAGE_TAG}" | sudo k3s ctr images import - 2>/dev/null && pass "Imported to k3s" || true
 
 # ------------------------------------------------------------------
@@ -181,7 +186,7 @@ pass "Target namespace created"
 
 TEST_REPO="https://github.com/cdryzun/argocd-plugins.git"
 
-info "Creating Application with baseCharter plugin..."
+info "Creating Application with baseCharter-v1.0 plugin..."
 cat <<EOF | kubectl apply -f - 2>&1
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -197,7 +202,7 @@ spec:
     targetRevision: main
     path: examples/nginx-app
     plugin:
-      name: baseCharter
+      name: baseCharter-v1.0
   destination:
     server: https://kubernetes.default.svc
     namespace: ${TEST_TARGET_NS}

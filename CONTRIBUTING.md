@@ -23,7 +23,7 @@ Thank you for your interest in contributing!
 
 ```bash
 # Prerequisites
-go 1.21+
+go 1.26+
 helm 3.x
 kustomize 5.x
 docker
